@@ -97,6 +97,11 @@ def main():
 
     audio_file = upload_audio_file()
 
+    # ホームへのリンクを追加
+    st.markdown("""
+    [← Back to Home](/)
+    """)
+
     if audio_file is not None:
         display_audio(audio_file)
 
