@@ -3,20 +3,27 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
+from langchain.schema import SystemMessage
+from langchain.prompts.chat import HumanMessagePromptTemplate
 from openai import OpenAI
 import json
 
+# ページを初期化
 def init_page():
     st.title("英文の校正")
     st.sidebar.title("Options")
 
-def initialize_openai_client(api_key):
-    return OpenAI(api_key=api_key)
-    
+
+# 環境変数からAPIキーを取得
 def load_api_key():
     load_dotenv()
     return os.environ['OPENAI_API_KEY']
 
+# OpenAIクライアントを初期化
+def initialize_openai_client(api_key):
+    return OpenAI(api_key=api_key)
+
+# モデルを選択
 def select_model():
     model = st.sidebar.radio("Choose a model:", ("GPT-4o", "GPT-4o-mini"))
     model_name = "gpt-4o" if model == "GPT-4o" else "gpt-4o-mini"
@@ -29,67 +36,50 @@ def select_model():
     )
     return ChatOpenAI(temperature=temperature, model_name=model_name)
 
-def analyze_text(llm, text):
-    # シンプルなプロンプトを使用
-    prompt = ChatPromptTemplate.from_template("""
-        Correct the following text to CEFR B2 level and provide the result as a JSON object with the following structure:
-        {
-            "corrected_text": "Corrected version of the text",
-            "corrections": ["List of corrections"],
-            "b2_expressions": ["Useful CEFR B2 expressions"]
-        }
-        Text to correct: {input_text}
-    """)
+# プロンプトテンプレートを定義
+def define_prompt_template():
+    return ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(
+                content=(
+                    """あなたはネイティブの英語教師です。入力された英語テキストは中級の英語学習社による英作文です。
+                    以下の形式に従って、CFER B2レベルの英語で校正した上で、改善ポイントを5つ以内でリストアップし、最後に覚えるべき表現を1つ以上5つ以内でリストアップしてください
+                    日本語で出力してください。
 
-    # テンプレートにユーザーの入力を適用
-    formatted_prompt = prompt.format(input_text=text)
+                    1. 英語の校正結果
+                    2. 校正前の英文の評価(CEFR基準)
+                    3. 改善ポイント
+                    4. 覚えるべきポイントとその解説 
 
-    result = llm(formatted_prompt)
+                    出力形式は以下の通りでお願いします。
+                    1. 英語の校正結果：<改行>
+                       {校正された英文}
+                    2. 校正前の英文の評価(CEFR基準)：<改行>
+                       {評価に関する文章}
+                    3. 改善ポイント：<改行>
+                       {改善ポイントに関する文章}
+                    4. 覚えるべきポイントとその解説：<改行>
+                       {覚えるべきポイントに関する文章}  
+                    """
+                )
+            ),
+            HumanMessagePromptTemplate.from_template("{text}"),
+        ]
+    )
 
-    st.write("Raw AI Response:", result)  # レスポンスのデバッグ
-
-    try:
-        # AIのレスポンスをJSONとして解析
-        response_content = json.loads(result["content"])
-
-        if "corrected_text" not in response_content:
-            st.error(f"AI response did not contain 'corrected_text'. Full response: {response_content}")
-            return {
-                "corrected_text": "Error: 'corrected_text' not found",
-                "corrections": ["Error in AI response"],
-                "b2_expressions": ["Error in AI response"]
-            }
-
-        return response_content
-
-    except json.JSONDecodeError as e:
-        st.error(f"Failed to parse the response: {str(e)}")
-        return {
-            "corrected_text": "Error in processing",
-            "corrections": ["Unable to process corrections"],
-            "b2_expressions": ["Unable to process expressions"]
-        }
-
-def display_results(results):
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📝 Corrected Text")
-        st.write(results["corrected_text"])
-        
-        st.subheader("🔍 Corrections Explained")
-        for correction in results["corrections"]:
-            st.markdown(f"- {correction}")
-    
-    with col2:
-        st.subheader("📚 CEFR B2 Expressions to Learn")
-        for expression in results["b2_expressions"]:
-            st.markdown(f"- {expression}")
+def process_transcript_with_llm(llm, transcript, template):
+    result = llm(template.format_messages(text=transcript))
+    return result
 
 def main():
+    # APIキーを読み込む
     api_key = load_api_key()
     client = initialize_openai_client(api_key)
+
+    # ページを初期化
     init_page()    
+
+    # LLMを選択
     llm = select_model()
 
     input_text = st.text_area(
@@ -105,9 +95,13 @@ def main():
             
         try:
             with st.spinner("Analyzing your text..."):
-                results = analyze_text(llm, input_text)
-                display_results(results)
-                
+                template = define_prompt_template()
+                result = process_transcript_with_llm(llm, input_text, template)
+                result_content = result.content
+                st.success("AIがあなたの英語についてアドバイスを出力しました！")
+                st.write("Content:")
+                st.write(result_content)
+
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
             st.error("Full error details for debugging:")
