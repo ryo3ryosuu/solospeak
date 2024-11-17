@@ -10,7 +10,7 @@ import json
 
 # ページを初期化
 def init_page():
-    st.title("英文の校正")
+    st.title("Quick Writing")
     st.sidebar.title("Options")
 
 
@@ -42,24 +42,16 @@ def define_prompt_template():
         [
             SystemMessage(
                 content=(
-                    """あなたはネイティブの英語教師です。入力された英語テキストは中級の英語学習社による英作文です。
-                    以下の形式に従って、CFER B2レベルの英語で校正した上で、改善ポイントを5つ以内でリストアップし、最後に覚えるべき表現を1つ以上5つ以内でリストアップしてください
-                    日本語で出力してください。
+                    """あなたは英語の教師です。英作文の課題を生徒に与えてください。
 
-                    1. 英語の校正結果
-                    2. 校正前の英文の評価(CEFR基準)
-                    3. 改善ポイント
-                    4. 覚えるべきポイントとその解説 
+                    課題を3つ出してください。生徒はそのうちの一つを選択します。
 
-                    出力形式は以下の通りでお願いします。
-                    1. 英語の校正結果：<改行>
-                       {校正された英文}
-                    2. 校正前の英文の評価(CEFR基準)：<改行>
-                       {評価に関する文章}
-                    3. 改善ポイント：<改行>
-                       {改善ポイントに関する文章}
-                    4. 覚えるべきポイントとその解説：<改行>
-                       {覚えるべきポイントに関する文章}  
+                    例えば以下のようなテーマです
+
+                    - Music that is special to you
+                    - What foreign country would you like to visit?
+                    - The impact of technology on daily life
+                    - A story from your childhood 
                     """
                 )
             ),
@@ -87,23 +79,13 @@ def main():
     # LLMを選択
     llm = select_model()
 
-    input_text = st.text_area(
-        "Input Text",
-        height=150,
-        placeholder="Enter your English text here..."
-    )
-
-    if st.button("Analyze Text", disabled=not api_key):
-        if not input_text:
-            st.error("Please enter some text to analyze.")
-            return
-            
+    if st.button("Get Your Homework", disabled=not api_key):
         try:
-            with st.spinner("Analyzing your text..."):
+            with st.spinner("Getting Your Homework..."):
                 template = define_prompt_template()
-                result = process_transcript_with_llm(llm, input_text, template)
+                result = process_transcript_with_llm(llm, "", template)
                 result_content = result.content
-                st.success("AIがあなたの英語についてアドバイスを出力しました！")
+                st.success("AIがあなたの課題を出力しました！")
                 st.write("Content:")
                 st.write(result_content)
 
