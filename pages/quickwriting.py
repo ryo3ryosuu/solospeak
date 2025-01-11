@@ -44,9 +44,8 @@ def define_prompt_template():
                 content=(
                     """あなたは英語の教師です。英作文の課題を生徒に与えてください。
 
-                    課題を3つ出してください。生徒はそのうちの一つを選択します。
-
-                    例えば以下のようなテーマです
+                    毎回異なる課題を3つ出してください。生徒はそのうちの一つを選択します。
+                    例えば以下のようなテーマです。ただし、以下と同じテーマは出題しないでください。
 
                     - Music that is special to you
                     - What foreign country would you like to visit?
